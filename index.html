@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Control de Gastos</title>
+    <style>
+        :root {
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --primary: #2563eb;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --border: #cbd5e1;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 16px;
+            padding-bottom: 100px;
+        }
+
+        /* Indicadores Superiores */
+        .header-dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .metric-box {
+            background: var(--card-bg);
+            padding: 14px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+            border: 1px solid #e2e8f0;
+        }
+
+        .metric-box.full {
+            grid-column: span 2;
+            text-align: center;
+        }
+
+        .metric-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .metric-value {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .metric-value.positive { color: var(--success); }
+        .metric-value.negative { color: var(--danger); }
+
+        /* Tarjetas de Categorías */
+        .category-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+            border: 1px solid #e2e8f0;
+        }
+
+        .category-header {
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 8px;
+            margin-bottom: 14px;
+        }
+
+        .category-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--primary);
+            text-transform: uppercase;
+        }
+
+        /* Filas de Carga */
+        .row-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            gap: 8px;
+        }
+
+        .row-label {
+            flex: 1;
+            font-size: 14px;
+            color: var(--text-main);
+            background: transparent;
+            border: none;
+            padding: 6px 0;
+            border-bottom: 1px dashed transparent;
+        }
+
+        .row-label:focus {
+            border-bottom-color: var(--primary);
+            outline: none;
+        }
+
+        /* Celda de Entrada con Signo $ Incorporado */
+        .currency-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            width: 130px;
+            padding-left: 12px;
+        }
+
+        .currency-input-wrapper::before {
+            content: "$";
+            position: absolute;
+            left: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .row-value {
+            width: 100%;
+            border: none;
+            background: transparent;
+            text-align: right;
+            padding: 8px 10px 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .row-value:focus {
+            outline: none;
+        }
+
+        .btn-delete {
+            background: transparent;
+            border: none;
+            color: var(--danger);
+            cursor: pointer;
+            font-size: 14px;
+            padding: 6px;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Botón de Agregar Fila */
+        .btn-add {
+            background: #fff;
+            color: var(--primary);
+            border: 1px dashed var(--primary);
+            padding: 10px;
+            border-radius: 10px;
+            width: 100%;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .btn-add:active {
+            background: #eff6ff;
+        }
+
+        .subtotal-box {
+            text-align: right;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 1px solid #f1f5f9;
+        }
+
+        /* Botón Flotante para PDF */
+        .float-btn {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary);
+            color: white;
+            padding: 16px 32px;
+            border-radius: 30px;
+            font-weight: 600;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+            border: none;
+            cursor: pointer;
+            z-index: 100;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Ajustes Estrictos para Impresión / Exportación PDF */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .btn-add, .btn-delete, .float-btn {
+                display: none !important;
+            }
+            .category-card {
+                box-shadow: none;
+                border: 1px solid #cbd5e1;
+                page-break-inside: avoid;
+            }
+            .currency-input-wrapper {
+                border: none;
+                background: transparent;
+                padding-left: 0;
+            }
+            .currency-input-wrapper::before {
+                left: -2px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Indicadores Principales -->
+    <header class="header-dashboard">
+        <div class="metric-box">
+            <div class="metric-title">Gastos Fijos Totales</div>
+            <div id="total-gastos" class="metric-value">$ 0,00</div>
+        </div>
+        <div class="metric-box">
+            <div class="metric-title">Total Sueldos</div>
+            <div id="total-sueldos" class="metric-value">$ 0,00</div>
+        </div>
+        <div class="metric-box full">
+            <div class="metric-title">Restante / Saldo Disponible</div>
+            <div id="saldo-restante" class="metric-value positive">$ 0,00</div>
+        </div>
+    </header>
+
+    <!-- Contenedor Dinámico de Módulos -->
+    <div id="dashboard-container"></div>
+
+    <!-- Acción de Exportación PDF nativa de iOS -->
+    <button class="float-btn" onclick="window.print()">📄 Exportar PDF / Enviar</button>
+
+    <script>
+        // Mapeo exacto de ítems y montos extraídos de la imagen original
+        const initialTemplate = {
+            "Sueldos (Ingresos)": [
+                { label: "SUELDO FRAN", value: 3146190, isRevenue: true },
+                { label: "SUELDO DAIA", value: 2038336, isRevenue: true }
+            ],
+            "Departamento": [
+                { label: "Alquiler + imp", value: 860000 },
+                { label: "Expensas 11/26", value: 301000 },
+                { label: "EPE", value: 90000 },
+                { label: "Gas", value: 25000 },
+                { label: "Cable/Internet/Teléfonos", value: 90000 },
+                { label: "Seguro bici, monopatín", value: 21305 }
+            ],
+            "Auto": [
+                { label: "Cochera", value: 160000 },
+                { label: "Seguro Sancor Gol Trend", value: 153000 }
+            ],
+            "Personal": [
+                { label: "Teléfono Fran", value: 35000 },
+                { label: "Tarjeta Fran (6/12)", value: 1054295.55 },
+                { label: "Tarjeta Daia", value: 700000 },
+                { label: "Obra social (Cuota 1/6)", value: 224334 }
+            ],
+            "Toyota Corolla Cuotas": [
+                { label: "Cuota 23/96", value: 350000 }
+            ]
+        };
+
+        // Carga desde memoria local o usa la plantilla base
+        let appData = JSON.parse(localStorage.getItem('dashboard_gastos_v2')) || initialTemplate;
+
+        function formatCurrency(num) {
+            return '$ ' + num.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function render() {
+            const container = document.getElementById('dashboard-container');
+            container.innerHTML = '';
+
+            for (const [category, items] of Object.entries(appData)) {
+                const card = document.createElement('div');
+                card.className = 'category-card';
+
+                const header = document.createElement('div');
+                header.className = 'category-header';
+                header.innerHTML = `<span class="category-title">${category}</span>`;
+                card.appendChild(header);
+
+                items.forEach((item, index) => {
+                    const row = document.createElement('div');
+                    row.className = 'row-item';
+
+                    // Campo de Nombre de Gasto Editable
+                    const labelInput = document.createElement('input');
+                    labelInput.className = 'row-label';
+                    labelInput.value = item.label;
