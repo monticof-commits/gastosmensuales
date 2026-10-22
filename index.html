@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Control de Gastos Mensuales</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+      Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    margin: 20px;
+    background: #f4f6f8;
+    color: #333;
+  }
+  h1 {
+    text-align: center;
+    color: #2c3e50;
+  }
+  label {
+    font-weight: 600;
+  }
+  input[type="number"], input[type="text"] {
+    width: 100%;
+    padding: 6px 10px;
+    margin: 5px 0 15px 0;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+  }
+  .container {
+    max-width: 450px;
+    margin: 0 auto;
+    background: white;
+    padding: 15px 25px 30px;
+    border-radius: 10px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.1);
+  }
+  .section {
+    margin-bottom: 25px;
+  }
+  .gastos-list {
+    margin-bottom: 15px;
+  }
+  .gasto-item {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .gasto-item input[type="text"] {
+    flex: 2;
+  }
+  .gasto-item input[type="number"] {
+    flex: 1;
+  }
+  button {
+    background-color: #2980b9;
+    color: white;
+    border: none;
+    padding: 10px 14px;
+    border-radius: 7px;
+    font-size: 1rem;
+    cursor: pointer;
+    width: 100%;
+  }
+  button:hover {
+    background-color: #1c5980;
+  }
+  .resumen {
+    font-size: 1.1rem;
+  }
+  .resumen strong {
+    color: #2c3e50;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>Control de Gastos Mensuales</h1>
+    <div class="section ingresos">
+      <label>Ingreso persona 1 ($):</label>
+      <input type="number" min="0" step="0.01" id="ingreso1" value="0" />
+      <label>Ingreso persona 2 ($):</label>
+      <input type="number" min="0" step="0.01" id="ingreso2" value="0" />
+    </div>
+
+    <div class="section gastos">
+      <label>Gastos:</label>
+      <div class="gastos-list" id="gastos-list">
+        <div class="gasto-item">
+          <input type="text" placeholder="Tipo de gasto" class="tipo-gasto" />
+          <input type="number" min="0" step="0.01" placeholder="$ Monto" class="monto-gasto" />
+        </div>
+      </div>
+      <button id="add-gasto">Agregar gasto</button>
+    </div>
+
+    <div class="section resumen">
+      <p>Total ingresos: $<span id="total-ingresos">0.00</span></p>
+      <p>Total gastos: $<span id="total-gastos">0.00</span></p>
+      <p><strong>Saldo disponible: $<span id="saldo-disponible">0.00</span></strong></p>
+    </div>
+  </div>
+
+<script>
+  const ingreso1 = document.getElementById('ingreso1');
+  const ingreso2 = document.getElementById('ingreso2');
+  const gastosList = document.getElementById('gastos-list');
+  const addGastoBtn = document.getElementById('add-gasto');
+  const totalIngresosSpan = document.getElementById('total-ingresos');
+  const totalGastosSpan = document.getElementById('total-gastos');
+  const saldoDisponibleSpan = document.getElementById('saldo-disponible');
+
+  function calcularResumen() {
+    const ingresos = parseFloat(ingreso1.value || 0) + parseFloat(ingreso2.value || 0);
+
+    let totalGastos = 0;
+    const montos = document.querySelectorAll('.monto-gasto');
+    montos.forEach(input => {
+      totalGastos += parseFloat(input.value || 0);
+    });
+
+    totalIngresosSpan.textContent = ingresos.toFixed(2);
+    totalGastosSpan.textContent = totalGastos.toFixed(2);
+    saldoDisponibleSpan.textContent = (ingresos - totalGastos).toFixed(2);
+  }
+
+  function agregarGasto() {
+    const gastoDiv = document.createElement('div');
+    gastoDiv.className = 'gasto-item';
+
+    const inputTipo = document.createElement('input');
+    inputTipo.type = 'text';
+    inputTipo.placeholder = 'Tipo de gasto';
+    inputTipo.className = 'tipo-gasto';
+
+    const inputMonto = document.createElement('input');
+    inputMonto.type = 'number';
+    inputMonto.min = '0';
+    inputMonto.step = '0.01';
+    inputMonto.placeholder = '$ Monto';
+    inputMonto.className = 'monto-gasto';
+
+    inputMonto.addEventListener('input', calcularResumen);
+    inputTipo.addEventListener('input', calcularResumen);
+
+    gastoDiv.appendChild(inputTipo);
+    gastoDiv.appendChild(inputMonto);
+
+    gastosList.appendChild(gastoDiv);
+  }
+
+  ingreso1.addEventListener('input', calcularResumen);
+  ingreso2.addEventListener('input', calcularResumen);
+
+  addGastoBtn.addEventListener('click', () => {
+    agregarGasto();
+  });
+
+  // Añadir eventos a los inputs iniciales
+  document.querySelectorAll('.monto-gasto, .tipo-gasto').forEach(input => {
+    input.addEventListener('input', calcularResumen);
+  });
+
+  calcularResumen();
+</script>
+</body>
+</html>
