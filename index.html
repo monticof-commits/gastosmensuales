@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Gastos Mensuales</title>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --text-muted: #666666;
+            --primary: #2563eb;
+            --success: #10b981;
+            --danger: #ef4444;
+            --border: #e5e7eb;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 16px;
+            padding-bottom: 90px;
+        }
+
+        header {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background: var(--card-bg);
+            padding: 14px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+            border: 1px solid var(--border);
+        }
+
+        .metric-card.full {
+            grid-column: span 2;
+            text-align: center;
+        }
+
+        .metric-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .metric-value {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .metric-value.positive { color: var(--success); }
+        .metric-value.negative { color: var(--danger); }
+
+        .category-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+            border: 1px solid var(--border);
+        }
+
+        .category-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+            margin-bottom: 12px;
+        }
+
+        .category-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .row-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            gap: 8px;
+        }
+
+        .row-label {
+            flex: 1;
+            font-size: 14px;
+            color: var(--text-main);
+            background: transparent;
+            border: none;
+        }
+
+        .row-value {
+            width: 100px;
+            text-align: right;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 4px 6px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            background: #f8fafc;
+        }
+
+        .row-value:focus {
+            border-color: var(--primary);
+            background: #fff;
+            outline: none;
+        }
+
+        .btn-delete {
+            background: transparent;
+            border: none;
+            color: var(--danger);
+            cursor: pointer;
+            font-size: 14px;
+            padding: 4px;
+        }
+
+        .btn-add {
+            background: #f1f5f9;
+            color: var(--primary);
+            border: 1px dashed var(--primary);
+            padding: 8px;
+            border-radius: 8px;
+            width: 100%;
+            font-weight: 500;
+            font-size: 13px;
+            cursor: pointer;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .subtotal-text {
+            text-align: right;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-top: 10px;
+        }
+
+        .float-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary);
+            color: white;
+            padding: 14px 28px;
+            border-radius: 30px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+            border: none;
+            cursor: pointer;
+            z-index: 100;
+            font-size: 15px;
+        }
+
+        /* Formato de Impresión para PDF */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .btn-add, .btn-delete, .float-btn, input::placeholder {
+                display: none !important;
+            }
+            .category-card {
+                box-shadow: none;
+                page-break-inside: avoid;
+            }
+            .row-value {
+                background: transparent;
+                border: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="metric-card">
+            <div class="metric-title">Gastos Totales</div>
+            <div id="total-gastos" class="metric-value">0,00</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-title">Total Sueldos</div>
+            <div id="total-sueldos" class="metric-value">0,00</div>
+        </div>
+        <div class="metric-card full">
+            <div class="metric-title">Saldo Restante</div>
+            <div id="saldo-restante" class="metric-value positive">0,00</div>
+        </div>
+    </header>
+
+    <div id="dashboard-container"></div>
+
+    <button class="float-btn" onclick="window.print()">📄 Exportar PDF / Enviar</button>
+
+    <script>
+        // Estructura inicial idéntica a tu imagen de Google Sheets
+        const defaultData = {
+            "Sueldos (Ingresos)": [
+                { label: "SUELDO FRAN", value: 3146190, isRevenue: true },
+                { label: "SUELDO DAIA", value: 2038336, isRevenue: true }
+            ],
+            "Gastos Fijos - Departamento": [
+                { label: "Alquiler + imp", value: 860000 },
+                { label: "Expensas 11/26", value: 301000 },
+                { label: "EPE", value: 90000 },
+                { label: "Gas", value: 25000 },
+                { label: "Cable/Internet/Teléfonos", value: 90000 },
+                { label: "Seguro bici, monopatín", value: 21305 }
+            ],
+            "Gastos - Auto": [
+                { label: "Cochera", value: 160000 },
+                { label: "Seguro Sancor Gol Trend", value: 153000 }
+            ],
+            "Gastos - Personal y Cuotas": [
+                { label: "Teléfono Fran", value: 35000 },
+                { label: "Tarjeta Fran (6/12)", value: 1054295.55 },
+                { label: "Tarjeta Daia", value: 700000 },
+                { label: "Obra social (Cuota 1/6)", value: 224334 },
+                { label: "Toyota Corolla Cuota 23/96", value: 350000 }
+            ]
+        };
+
+        let appData = JSON.parse(localStorage.getItem('dashboard_gastos_data')) || defaultData;
+
+        function formatCurrency(num) {
+            return '$ ' + num.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function render() {
+            const container = document.getElementById('dashboard-container');
+            container.innerHTML = '';
+            
+            let totalGastos = 0;
+            let totalSueldos = 0;
+
+            for (const [category, items] of Object.entries(appData)) {
+                const card = document.createElement('div');
+                card.className = 'category-card';
+
+                const header = document.createElement('div');
+                header.className = 'category-header';
+                header.innerHTML = `<span class="category-title">${category}</span>`;
+                card.appendChild(header);
+
+                let subtotal = 0;
+
+                items.forEach((item, index) => {
+                    const row = document.createElement('div');
+                    row.className = 'row-item';
+
+                    const labelInput = document.createElement('input');
+                    labelInput.className = 'row-label';
+                    labelInput.value = item.label;
+                    labelInput.onchange = (e) => {
+                        item.label = e.target.value;
+                        saveData();
+                    };
+
+                    const valInput = document.createElement('input');
+                    valInput.className = 'row-value';
+                    valInput.type = 'number';
+                    valInput.step = 'any';
+                    valInput.value = item.value;
+                    valInput.oninput = (e) => {
+                        item.value = parseFloat(e.target.value) || 0;
+                        calculateTotals();
+                    };
+                    valInput.onchange = () => saveData();
+
+                    const btnDelete = document.createElement('button');
+                    btnDelete.className = 'btn-delete';
+                    btnDelete.innerHTML = '🗑️';
+                    btnDelete.onclick = () => {
+                        items.splice(index, 1);
+                        saveData();
+                        render();
+                    };
+
+                    row.appendChild(labelInput);
+                    row.appendChild(valInput);
+                    row.appendChild(btnDelete);
+                    card.appendChild(row);
+
+                    if (item.isRevenue) {
+                        totalSueldos += item.value;
+                    } else {
+                        totalGastos += item.value;
+                    }
+                    subtotal += item.value;
+                });
+
+                const subtotalDiv = document.createElement('div');
