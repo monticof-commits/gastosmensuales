@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gastos fijos</title>
+<style>
+:root{--bg:#eef1ec;--sf:#fff;--tx:#1d2a24;--mu:#66736b;--ln:#d5dcd6;--ac:#1f5c46;--ok:#0f7a4a;--bad:#b3302a;--ing:#e3efe8;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141a17;--sf:#1e2723;--tx:#e8eeea;--mu:#9aa8a0;--ln:#33413a;--ac:#6fc3a0;--ok:#5fd39a;--bad:#ff8a80;--ing:#23352c;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#141a17;--sf:#1e2723;--tx:#e8eeea;--mu:#9aa8a0;--ln:#33413a;--ac:#6fc3a0;--ok:#5fd39a;--bad:#ff8a80;--ing:#23352c;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+main{max-width:760px;margin:0 auto;padding:16px}
+h1{font:700 1.5rem/1.2 Georgia,"Times New Roman",serif;margin:4px 0 2px}
+.sub{color:var(--mu);font-size:.9rem;margin:0 0 14px}
+.sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.sum div{background:var(--sf);border:1px solid var(--ln);border-radius:10px;padding:10px}
+.sum small{color:var(--mu);display:block;font-size:.78rem}
+.sum b{font-size:1.05rem;word-break:break-word}
+#rest.pos{color:var(--ok)}#rest.neg{color:var(--bad)}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+button{font:inherit;cursor:pointer;border:1px solid var(--ln);background:var(--sf);color:var(--tx);border-radius:8px;padding:8px 12px}
+button.p{background:var(--ac);color:#fff;border-color:var(--ac)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) button.p{color:#0d1511}}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
+.card{background:var(--sf);border:1px solid var(--ln);border-radius:10px;margin-bottom:12px;overflow:hidden}
+.card.in{background:var(--ing)}
+.hd{display:flex;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--ln)}
+.hd input{font-weight:700;flex:1}
+.row{display:flex;gap:6px;align-items:center;padding:4px 10px}
+.row .n{flex:1;min-width:0}
+.amt{display:flex;align-items:center;border:1px solid var(--ln);border-radius:6px;padding:0 6px;width:150px;background:transparent}
+.amt span{color:var(--mu)}
+.amt input{text-align:right;width:100%;border:0}
+input{font:inherit;color:inherit;background:transparent;border:1px solid var(--ln);border-radius:6px;padding:6px 8px;min-width:0}
+.x{padding:4px 8px;color:var(--bad);border:0;background:transparent}
+.ft{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-top:1px solid var(--ln);font-weight:600}
+.ft button{font-weight:400;padding:4px 10px;font-size:.88rem}
+#msg{color:var(--mu);font-size:.85rem;align-self:center}
+@media print{
+ body{background:#fff;color:#000}.bar,.x,.ft button{display:none!important}
+ .card{break-inside:avoid;border-color:#999}input,.amt{border:0!important}
+ :root{--sf:#fff;--tx:#000;--mu:#444;--ln:#bbb;--ing:#fff}
+}
+</style></head><body><main>
+<h1>Gastos fijos</h1>
+<p class="sub" id="fecha"></p>
+<div class="sum">
+ <div><small>Ingresos</small><b id="tIng"></b></div>
+ <div><small>Gastos</small><b id="tGas"></b></div>
+ <div><small>Restante</small><b id="rest"></b></div>
+</div>
+<div class="bar">
+ <button class="p" id="save">Guardar</button>
+ <button id="pdf">Exportar PDF</button>
+ <button id="addSec">Agregar sección</button>
+ <button id="reset">Restaurar ejemplo</button>
+ <span id="msg"></span>
+</div>
+<div id="app"></div>
+</main>
+<script>
+var KEY="gastos-fijos-v1";
+var DEF={ing:{t:"Ingresos",items:[{n:"Sueldo Fran",a:3146190},{n:"Sueldo Daia",a:2038336}]},
+secs:[
+{t:"Departamento",items:[{n:"Alquiler + imp",a:860000},{n:"Expensas",a:301000},{n:"EPE",a:90000},{n:"Gas",a:25000},{n:"Cable/Internet/Teléfonos",a:90000},{n:"Seguro bici, monopatín",a:21305}]},
+{t:"Auto",items:[{n:"Cochera",a:160000},{n:"Seguro Sancor Gol Trend",a:153000}]},
+{t:"Personal",items:[{n:"Teléfono Fran",a:35000},{n:"Teléfono Daia",a:0},{n:"Monotributo e IIBB (Fran)",a:0},{n:"Monotributo e IIBB (Daia)",a:0}]},
+{t:"Tarjetas y cuotas",items:[{n:"Tarjeta Fran",a:1054295.55},{n:"Tarjeta Daia",a:700000},{n:"Obra social",a:224334},{n:"Cuota lavarropas",a:0}]},
+{t:"Toyota Corolla cuotas",items:[{n:"Cuota 23/96",a:350000}]}
+]};
+var S;
+try{var raw=localStorage.getItem(KEY);S=raw?JSON.parse(raw):null}catch(e){S=null}
+if(!S||!S.ing||!S.secs)S=JSON.parse(JSON.stringify(DEF));
+var fmt=new Intl.NumberFormat("es-AR",{style:"currency",currency:"ARS",minimumFractionDigits:2});
+function sum(l){return l.reduce(function(a,i){return a+(+i.a||0)},0)}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")}
+function totals(){
+ var ti=sum(S.ing.items),tg=S.secs.reduce(function(a,s){return a+sum(s.items)},0),r=ti-tg;
+ document.getElementById("tIng").textContent=fmt.format(ti);
+ document.getElementById("tGas").textContent=fmt.format(tg);
+ var e=document.getElementById("rest");e.textContent=fmt.format(r);e.className=r<0?"neg":"pos";
+ document.querySelectorAll("[data-ft]").forEach(function(el){
+  var k=el.getAttribute("data-ft"),l=k==="i"?S.ing.items:S.secs[+k].items;el.textContent=fmt.format(sum(l))});
+}
+function card(sec,k,cls){
+ var h='<div class="card '+cls+'"><div class="hd"><input data-k="'+k+'" data-f="t" value="'+esc(sec.t)+'" aria-label="Nombre de la sección">'+
+ (k==="i"?"":'<button class="x" data-del="'+k+'" title="Eliminar sección" aria-label="Eliminar sección">Eliminar</button>')+'</div>';
+ sec.items.forEach(function(it,j){
+  h+='<div class="row"><input class="n" data-k="'+k+'" data-j="'+j+'" data-f="n" value="'+esc(it.n)+'" aria-label="Concepto">'+
+  '<label class="amt"><span>$</span><input type="number" step="0.01" inputmode="decimal" data-k="'+k+'" data-j="'+j+'" data-f="a" value="'+(it.a===0?"":it.a)+'" placeholder="0,00" aria-label="Importe"></label>'+
+  '<button class="x" data-k="'+k+'" data-rm="'+j+'" title="Quitar campo" aria-label="Quitar campo">✕</button></div>';
+ });
+ return h+'<div class="ft"><button data-k="'+k+'" data-add="1">Agregar campo</button><span>Subtotal <span data-ft="'+k+'"></span></span></div></div>';
+}
+function render(){
+ var h=card(S.ing,"i","in");
+ S.secs.forEach(function(s,i){h+=card(s,String(i),"")});
+ document.getElementById("app").innerHTML=h;totals();
+}
+function list(k){return k==="i"?S.ing.items:S.secs[+k].items}
+var app=document.getElementById("app");
+app.addEventListener("input",function(e){
+ var d=e.target.dataset;if(d.f===undefined)return;
+ if(d.f==="t"){(d.k==="i"?S.ing:S.secs[+d.k]).t=e.target.value;return}
+ var it=list(d.k)[+d.j];it[d.f]=d.f==="a"?(parseFloat(e.target.value)||0):e.target.value;totals();
+});
+app.addEventListener("click",function(e){
+ var b=e.target.closest("button");if(!b)return;var d=b.dataset;
+ if(d.add){list(d.k).push({n:"Nuevo gasto",a:0});render()}
+ else if(d.rm!==undefined){list(d.k).splice(+d.rm,1);render()}
+ else if(d.del!==undefined){if(confirm("¿Eliminar esta sección y todos sus campos?")){S.secs.splice(+d.del,1);render()}}
+});
+function note(t){var m=document.getElementById("msg");m.textContent=t;setTimeout(function(){m.textContent=""},2500)}
+document.getElementById("addSec").onclick=function(){S.secs.push({t:"Nueva sección",items:[{n:"Nuevo gasto",a:0}]});render()};
+document.getElementById("save").onclick=function(){
+ try{localStorage.setItem(KEY,JSON.stringify(S));note("Guardado en este dispositivo")}catch(e){note("No se pudo guardar")}};
+document.getElementById("reset").onclick=function(){
+ if(confirm("¿Restaurar los datos de ejemplo? Se pierden los cambios sin guardar.")){S=JSON.parse(JSON.stringify(DEF));render()}};
+document.getElementById("pdf").onclick=function(){window.print()};
+document.getElementById("fecha").textContent="Resumen mensual · "+new Date().toLocaleDateString("es-AR",{month:"long",year:"numeric"});
+render();
+</script></body></html>
