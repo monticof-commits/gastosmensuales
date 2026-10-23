@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Finanzas Personales</title>
+    <!-- Tailwind CSS para diseño moderno -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- FontAwesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- html2pdf.js para exportar a PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            body { background-color: #fff; }
+            .card { box-shadow: none !important; border: 1px solid #e2e8f0; }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 max-w-4xl mx-auto text-slate-800">
+
+    <!-- Header / Selector de Mes -->
+    <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 bg-white p-6 rounded-2xl shadow-xs border border-slate-100">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Dashboard Financiero</h1>
+            <p class="text-sm text-slate-500">Control de ingresos, gastos y saldos mensuales</p>
+        </div>
+        <div class="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200 w-full sm:w-auto">
+            <i class="fa-solid fa-calendar-days text-slate-400 pl-3"></i>
+            <select id="monthSelect" class="bg-transparent font-semibold text-slate-700 focus:outline-none py-1.5 pr-8 pl-1 w-full cursor-pointer">
+                <option value="Noviembre 2026">Noviembre 2026</option>
+                <option value="Diciembre 2026">Diciembre 2026</option>
+                <option value="Enero 2027">Enero 2027</option>
+                <option value="Febrero 2027">Febrero 2027</option>
+                <option value="Marzo 2027">Marzo 2027</option>
+                <option value="Abril 2027">Abril 2027</option>
+                <option value="Mayo 2027">Mayo 2027</option>
+                <option value="Junio 2027">Junio 2027</option>
+                <option value="Julio 2027">Julio 2027</option>
+                <option value="Agosto 2027">Agosto 2027</option>
+                <option value="Septiembre 2027">Septiembre 2027</option>
+                <option value="Octubre 2027">Octubre 2027</option>
+            </select>
+        </div>
+    </header>
+
+    <!-- Botonera de Acciones (No imprimible) -->
+    <div class="no-print flex flex-wrap gap-3 mb-6">
+        <button onclick="exportToPDF()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition flex items-center gap-2 shadow-xs cursor-pointer">
+            <i class="fa-solid fa-file-pdf"></i> Exportar PDF para WhatsApp
+        </button>
+        <button onclick="saveToDevice()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition flex items-center gap-2 shadow-xs cursor-pointer">
+            <i class="fa-solid fa-floppy-disk"></i> Guardar Estado HTML
+        </button>
+        <button onclick="resetToDefault()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-medium transition flex items-center gap-2 cursor-pointer ml-auto">
+            <i class="fa-solid fa-rotate-left"></i> Reiniciar plantilla
+        </button>
+    </div>
+
+    <!-- Contenedor Principal imprimible -->
+    <div id="dashboard-content" class="space-y-6 bg-slate-50 rounded-2xl">
+        
+        <!-- RESUMEN DE SALDO PRINCIPAL -->
+        <div id="saldo-box" class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6 rounded-2xl shadow-sm relative overflow-hidden">
+            <div class="relative z-10">
+                <p class="text-sm font-medium text-slate-400 uppercase tracking-wider">Saldo Neto Restante (<span id="saldo-mes-label">Noviembre 2026</span>)</p>
+                <h2 class="text-4xl font-extrabold mt-1 tracking-tight" id="total-saldo">$ 0,00</h2>
+                <div class="mt-4 grid grid-cols-2 gap-4 pt-4 border-t border-slate-700/50 text-sm">
+                    <div>
+                        <span class="text-slate-400 block text-xs">Total Ingresos</span>
+                        <span class="text-emerald-400 font-semibold text-base" id="resumen-ingresos">$ 0,00</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block text-xs">Total Gastos</span>
+                        <span class="text-rose-400 font-semibold text-base" id="resumen-gastos">$ 0,00</span>
+                    </div>
+                </div>
+            </div>
+            <div class="absolute right-0 bottom-0 opacity-10 translate-x-4 translate-y-4">
+                <i class="fa-solid fa-wallet text-9xl"></i>
+            </div>
+        </div>
+
+        <!-- CATEGORÍAS DINÁMICAS -->
+        <div id="categories-container" class="space-y-6">
+            <!-- Se inyecta dinámicamente con JS -->
+        </div>
+
+    </div>
+
+    <script>
+        // Datos por defecto basados exactamente en tu PDF original
+        const defaultData = {
+            ingresos: {
+                title: "Ingreso mensual",
+                color: "emerald",
+                icon: "fa-money-bill-trend-up",
+                isExpense: false,
+                items: [
+                    { name: "Sueldo Fran", value: 0 },
+                    { name: "Sueldo Daia", value: 0 }
+                ]
+            },
+            gastosDepto: {
+                title: "Gastos departamento",
+                color: "amber",
+                icon: "fa-building",
+                isExpense: true,
+                items: [
+                    { name: "Alquiler", value: 0 },
+                    { name: "Expensas", value: 0 },
+                    { name: "EPE", value: 0 },
+                    { name: "Litoral Gas", value: 0 },
+                    { name: "Personal Flow + teléfono Daia", value: 0 },
+                    { name: "Teléfono Fran", value: 0 }
+                ]
+            },
+            gastosPersonales: {
+                title: "Gastos personales",
+                color: "purple",
+                icon: "fa-user",
+                isExpense: true,
+                items: [
+                    { name: "Obra social (Cuota 1/6)", value: 0 },
+                    { name: "Tarjeta Daia", value: 0 },
+                    { name: "Monotributo Daia", value: 0 },
+                    { name: "Crédito Mercado pago Daia", value: 0 },
+                    { name: "Tarjeta Fran", value: 0 },
+                    { name: "Monotributo Fran", value: 0 },
+                    { name: "Crédito Mercado Pago Fran", value: 0 },
+                    { name: "Cuota social Central DyF", value: 0 }
+                ]
+            },
+            auto: {
+                title: "Auto",
+                color: "blue",
+                icon: "fa-car",
+                isExpense: true,
+                items: [
+                    { name: "Cochera", value: 0 },
+                    { name: "Seguro Gol Trend", value: 0 },
+                    { name: "Patente Gol Trend", value: 0 },
+                    { name: "Cuota nro 23 Toyota Corolla", value: 0 }
+                ]
+            }
+        };
+
+        let currentData = JSON.parse(localStorage.getItem('dashboard_finanzas_data')) || structuredClone(defaultData);
+        let activeMonth = localStorage.getItem('dashboard_finanzas_month') || 'Noviembre 2026';
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('monthSelect').value = activeMonth;
+            document.getElementById('saldo-mes-label').innerText = activeMonth;
+            renderDashboard();
+            
+            document.getElementById('monthSelect').addEventListener('change', (e) => {
+                activeMonth = e.target.value;
+                document.getElementById('saldo-mes-label').innerText = activeMonth;
+                localStorage.setItem('dashboard_finanzas_month', activeMonth);
+            });
+        });
+
+        function renderDashboard() {
+            const container = document.getElementById('categories-container');
+            container.innerHTML = '';
+
+            for (const [catKey, cat] of Object.entries(currentData)) {
+                const card = document.createElement('div');
+                card.className = `bg-white p-6 rounded-2xl shadow-xs border border-slate-100 card transition duration-200`;
+                
+                // Color mapping dinámico para Tailwind
+                const colorTheme = cat.color === 'emerald' ? { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'focus:border-emerald-500' } :
+                                   cat.color === 'amber' ? { bg: 'bg-amber-50', text: 'text-amber-600', border: 'focus:border-amber-500' } :
+                                   cat.color === 'purple' ? { bg: 'bg-purple-50', text: 'text-purple-600', border: 'focus:border-purple-500' } :
+                                   { bg: 'bg-blue-50', text: 'text-blue-600', border: 'focus:border-blue-500' };
+
+                let itemsHTML = '';
+                cat.items.forEach((item, index) => {
+                    itemsHTML += `
+                        <div class="flex items-center justify-between gap-3 group py-1.5 border-b border-slate-50 last:border-0">
+                            <input type="text" value="${item.name}" 
+                                onchange="updateItemName('${catKey}', ${index}, this.value)"
+                                class="w-1/2 bg-transparent font-medium text-slate-700 py-1 px-2 rounded-lg border border-transparent hover:border-slate-200 focus:bg-white ${colorTheme.border} focus:outline-none text-sm transition">
+                            <div class="flex items-center gap-2 w-1/2 justify-end">
+                                <span class="text-slate-400 text-sm">$</span>
+                                <input type="number" step="any" placeholder="0" value="${item.value || ''}" 
+                                    oninput="updateItemValue('${catKey}', ${index}, this.value)"
+                                    class="w-24 text-right bg-transparent font-semibold text-slate-800 py-1 px-2 rounded-lg border border-transparent hover:border-slate-200 focus:bg-white ${colorTheme.border} focus:outline-none text-sm transition [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                                <button onclick="deleteItem('${catKey}', ${index})" class="no-print opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-500 rounded-md transition cursor-pointer" title="Eliminar fila">
+                                    <i class="fa-solid fa-trash-can text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-100">
+                        <div class="flex items-center gap-3">
+                            <div class="${colorTheme.bg} ${colorTheme.text} w-10 h-10 rounded-xl flex items-center justify-center">
+                                <i class="fa-solid ${cat.icon} text-lg"></i>
+                            </div>
+                            <input type="text" value="${cat.title}" 
+                                onchange="updateCategoryTitle('${catKey}', this.value)"
+                                class="font-bold text-slate-800 text-lg bg-transparent border border-transparent hover:border-slate-200 rounded-lg px-2 py-0.5 focus:bg-white ${colorTheme.border} focus:outline-none transition">
+                        </div>
+                        <span class="text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full ${cat.isExpense ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}">
+                            ${cat.isExpense ? 'Gasto' : 'Ingreso'}
+                        </span>
+                    </div>
+                    <div class="space-y-1 mb-4">
+                        ${itemsHTML}
+                    </div>
+                    <button onclick="addItem('${catKey}')" class="no-print mt-2 text-xs font-semibold ${colorTheme.text} hover:opacity-80 flex items-center gap-1.5 transition cursor-pointer">
+                        <i class="fa-solid fa-plus"></i> Agregar concepto
+                    </button>
+                `;
+                container.appendChild(card);
+            }
+            calculateTotals();
+        }
+
+        // Acciones sobre la estructura de datos
+        function updateCategoryTitle(catKey, newTitle) {
+            currentData[catKey].title = newTitle;
+            saveState();
+        }
+
+        function updateItemName(catKey, index, newName) {
+            currentData[catKey].items[index].name = newName;
+            saveState();
+        }
+
+        function updateItemValue(catKey, index, value) {
+            currentData[catKey].items[index].value = parseFloat(value) || 0;
+            calculateTotals();
+            saveState();
+        }
+
+        function addItem(catKey) {
+            currentData[catKey].items.push({ name: "Nuevo concepto", value: 0 });
+            renderDashboard();
+            saveState();
+        }
+
+        function deleteItem(catKey, index) {
+            currentData[catKey].items.splice(index, 1);
+            renderDashboard();
+            saveState();
+        }
+
+        // Cálculos matemáticos precisos
+        function calculateTotals() {
+            let totalIngresos = 0;
+            let totalGastos = 0;
+
+            for (const cat of Object.values(currentData)) {
+                let catSum = cat.items.reduce((sum, item) => sum + (item.value || 0), 0);
+                if (cat.isExpense) {
+                    totalGastos += catSum;
+                } else {
+                    totalIngresos += catSum;
+                }
+            }
+
+            let saldoNeto = totalIngresos - totalGastos;
+
+            // Formateador de moneda regional
+            const formatter = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 });
+
+            document.getElementById('resumen-ingresos').innerText = formatter.format(totalIngresos);
+            document.getElementById('resumen-gastos').innerText = formatter.format(totalGastos);
+            
+            const saldoEl = document.getElementById('total-saldo');
+            saldoEl.innerText = formatter.format(saldoNeto);
+
+            // Ajuste estético dinámico de colores de saldo
+            if (saldoNeto < 0) {
+                saldoEl.className = "text-4xl font-extrabold mt-1 tracking-tight text-rose-400";
+            } else if (saldoNeto > 0) {
+                saldoEl.className = "text-4xl font-extrabold mt-1 tracking-tight text-emerald-400";
+            } else {
+                saldoEl.className = "text-4xl font-extrabold mt-1 tracking-tight text-white";
+            }
+        }
+
+        function saveState() {
+            localStorage.setItem('dashboard_finanzas_data', JSON.stringify(currentData));
+        }
+
+        function resetToDefault() {
+            if(confirm("¿Estás seguro de que querés borrar todo y restaurar la plantilla original?")) {
+                currentData = structuredClone(defaultData);
+                localStorage.removeItem('dashboard_finanzas_data');
+                renderDashboard();
+            }
+        }
+
+        // Exportar como PDF Nativo y limpio
+        function exportToPDF() {
+            const element = document.getElementById('dashboard-content');
+            const opt = {
+                margin:       10,
+                filename:     `Finanzas_${activeMonth.replace(' ', '_')}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            
+            // Remueve temporalmente bordes e inputs para una exportación limpia
+            html2pdf().from(element).set(opt).save();
+        }
+
+        // Guardar archivo HTML en el almacenamiento del dispositivo con los cambios incluidos
+        function saveToDevice() {
+            // Reemplaza los datos hardcodeados en el script por los actuales para que persistan al abrir el archivo descargado
+            let currentHTML = document.documentElement.outerHTML;
+            
+            // Guardar cambios dentro del localStorage simulado en el archivo físico
+            const scriptDataReplacement = `let currentData = ${JSON.stringify(currentData)};\n        let activeMonth = '${activeMonth}';`;
+            currentHTML = currentHTML.replace(/let currentData = JSON\.parse\(.*?\)\s*\|\|\s*structuredClone\(defaultData\);[\s\S]*?let activeMonth = .*?;/, scriptDataReplacement);
+
+            const blob = new Blob([currentHTML], { type: "text/html" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `dashboard_finanzas_${activeMonth.replace(' ', '_')}.html`;
+            link.click();
+        }
+    </script>
+</body>
+</html>
