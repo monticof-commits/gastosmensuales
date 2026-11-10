@@ -1939,5 +1939,141 @@
       location.reload();
   }
 </script>
+<!-- IMPORTACIÓN DE SUPABASE -->
+<script src="https://jsdelivr.net"></script>
+
+<script>
+  // CONFIGURACIÓN DE TU PROYECTO SUPABASE
+  const supabaseUrl = 'https://TU_PROYECTO.supabase.co';
+  const supabaseKey = 'TU_ANON_PUBLIC_KEY';
+  const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+  // Al cargar la página
+  window.addEventListener('DOMContentLoaded', async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+          console.log("Sesión activa de:", session.user.email);
+          // Descargar el mes activo guardado en la nube
+          descargarMesDesdeNube();
+          
+          // Opcional: Escuchar cambios en tiempo real. Si Fran cambia el mes, a Daia se le cambia al instante sin tocar nada.
+          activarTiempoReal();
+      }
+
+      vincularBotonesInterfaz();
+  });
+
+  function vincularBotonesInterfaz() {
+      const botones = document.querySelectorAll('button');
+      botones.forEach(boton => {
+          const texto = boton.innerText.trim().toLowerCase();
+          if (texto.includes('ingresar')) {
+              boton.addEventListener('click', ejecutarLogin);
+          }
+          if (texto.includes('guardar estado html') || texto.includes('sincronizar')) {
+              boton.addEventListener('click', ejecutarGuardadoMes);
+          }
+          if (texto.includes('cerrar sesión')) {
+              boton.addEventListener('click', ejecutarLogout);
+          }
+      });
+  }
+
+  // --- ACCIÓN 1: INGRESAR ---
+  async function ejecutarLogin(e) {
+      if(e) e.preventDefault();
+      const emailInput = document.querySelector('input[type="email"], input[placeholder*="Correo"]');
+      const passwordInput = document.querySelector('input[type="password"], input[placeholder*="Contraseña"]');
+
+      if (!emailInput || !passwordInput) {
+          alert("Por favor, cargá los campos de Email y Contraseña.");
+          return;
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+          email: emailInput.value,
+          password: passwordInput.value
+      });
+
+      if (error) {
+          alert("Error de acceso: " + error.message);
+      } else {
+          alert("¡Ingreso exitoso!");
+          location.reload(); 
+      }
+  }
+
+  // --- ACCIÓN 2: GUARDAR ÚNICAMENTE EL MES EN LA NUBE ---
+  async function ejecutarGuardadoMes(e) {
+      if(e) e.preventDefault();
+
+      const mesActivo = localStorage.getItem('3df-lastDashboardMonth'); // Ej: "2026-11"
+
+      if (!mesActivo) {
+          alert("No se detectó ningún mes activo seleccionado.");
+          return;
+      }
+
+      // Guardamos en Supabase en una fila fija para la obra "Edificio StF"
+      const { error } = await supabase
+          .from('registro_gastos')
+          .upsert({ 
+              mes_año: 'Edificio StF-MesActivo', // Usamos un ID fijo para que se pisen el dato entre los dos
+              datos: { "3df-lastDashboardMonth": mesActivo } 
+          }, { onConflict: 'mes_año' });
+
+      if (error) {
+          alert("Error al sincronizar el mes: " + error.message);
+      } else {
+          alert("¡Mes sincronizado en la nube: " + mesActivo + "!");
+      }
+  }
+
+  // --- ACCIÓN 3: DESCARGAR EL MES AL ENTRAR ---
+  async function descargarMesDesdeNube() {
+      const { data, error } = await supabase
+          .from('registro_gastos')
+          .select('datos')
+          .eq('mes_año', 'Edificio StF-MesActivo')
+          .maybeSingle();
+
+      if (data && data.datos && data.datos["3df-lastDashboardMonth"]) {
+          const mesNube = data.datos["3df-lastDashboardMonth"];
+          const mesLocal = localStorage.getItem('3df-lastDashboardMonth');
+
+          // Si el mes de la nube es distinto al del teléfono, lo actualizamos
+          if (mesNube !== mesLocal) {
+              localStorage.setItem('3df-lastDashboardMonth', mesNube);
+              console.log("Mes actualizado desde la nube a:", mesNube);
+              // Forzamos recarga para que el dashboard procese el nuevo mes visualmente
+              location.reload(); 
+          }
+      }
+  }
+
+  // --- EXTRA: TIEMPO REAL (Sincronización instantánea) ---
+  function activarTiempoReal() {
+      supabase
+          .channel('cambios-mes')
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'registro_gastos', filter: "mes_año=eq.Edificio StF-MesActivo" }, (payload) => {
+              if (payload.new && payload.new.datos && payload.new.datos["3df-lastDashboardMonth"]) {
+                  const nuevoMes = payload.new.datos["3df-lastDashboardMonth"];
+                  if (nuevoMes !== localStorage.getItem('3df-lastDashboardMonth')) {
+                      localStorage.setItem('3df-lastDashboardMonth', nuevoMes);
+                      location.reload();
+                  }
+              }
+          })
+          .subscribe();
+  }
+
+  // --- ACCIÓN 4: CERRAR SESIÓN ---
+  async function ejecutarLogout() {
+      await supabase.auth.signOut();
+      alert("Sesión cerrada.");
+      location.reload();
+  }
+</script>
 
 </body></html>
