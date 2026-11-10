@@ -1762,5 +1762,182 @@
         }
     </script>
 
+<!-- Importamos la librería oficial de Supabase desde el CDN -->
+<script src="https://jsdelivr.net"></script>
+<script>
+  // Inicializamos Supabase con tus credenciales públicas
+  const supabaseUrl = 'https://TU_PROYECTO.supabase.co'; // Reemplazá por tu URL de Supabase
+  const supabaseKey = 'TU_ANON_PUBLIC_KEY';           // Reemplazá por tu clave Anon de Supabase
+  const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+  // Verificamos si ya hay una sesión activa al cargar la página
+  window.addEventListener('DOMContentLoaded', async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+          console.log("Sesión activa de:", session.user.email);
+          mostrarDashboardSincronizado();
+      } else {
+          mostrarFormularioDeIngreso();
+      }
+  });
+</script>
+<!-- 1. IMPORTAMOS LA LIBRERÍA OFICIAL DE SUPABASE -->
+<script src="https://jsdelivr.net"></script>
+
+<!-- 2. MOTOR DE AUTENTICACIÓN Y SINCRONIZACIÓN -->
+<script>
+  // Reemplazá esto con los datos reales de tu proyecto en Supabase (Settings > API)
+  const supabaseUrl = 'https://TU_PROYECTO.supabase.co';
+  const supabaseKey = 'TU_ANON_PUBLIC_KEY';
+  const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+  // Al cargar la página, verificamos la sesión y vinculamos los botones de tu formulario
+  window.addEventListener('DOMContentLoaded', async () => {
+      // Intentar recuperar sesión activa
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+          console.log("Sesión activa detectada para:", session.user.email);
+          // Si tu dashboard tiene contenedores para ocultar/mostrar secciones, usá esto:
+          // document.getElementById('seccion-login').classList.add('hidden');
+          // document.getElementById('seccion-dashboard').classList.remove('hidden');
+          
+          // Opcional: Levantar los datos del mes actual automáticamente desde Supabase
+          descargarDatosDesdeNube();
+      }
+
+      // Vinculamos de manera segura los botones usando JavaScript directamente
+      // (Buscamos los botones por su texto o ID para evitar que tengas que editar el HTML de arriba)
+      vincularEventosInterfaz();
+  });
+
+  function vincularEventosInterfaz() {
+      // Buscar botón de ingresar por su texto aproximado
+      const botones = document.querySelectorAll('button');
+      
+      botones.forEach(boton => {
+          if (tienenTexto(boton, 'Ingresar')) {
+              boton.addEventListener('click', ejecutarLogin);
+          }
+          if (tienenTexto(boton, 'Guardar Estado HTML')) {
+              boton.addEventListener('click', ejecutarGuardadoNube);
+          }
+          if (tienenTexto(boton, 'Cerrar sesión')) {
+              boton.addEventListener('click', ejecutarLogout);
+          }
+      });
+  }
+
+  function tienenTexto(elemento, texto) {
+      return boton.innerText.trim().toLowerCase().includes(texto.toLowerCase());
+  }
+
+  // --- ACCIÓN 1: LOGIN ---
+  async function ejecutarLogin(e) {
+      if(e) e.preventDefault();
+      
+      // Buscamos los inputs de tu formulario basándonos en sus placeholders
+      const emailInput = document.querySelector('input[placeholder*="Correo"], input[type="email"]');
+      const passwordInput = document.querySelector('input[placeholder*="Contraseña"], input[type="password"]');
+
+      if (!emailInput || !passwordInput) {
+          alert("No se encontraron los campos de Email o Contraseña en la página.");
+          return;
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+          email: emailInput.value,
+          password: passwordInput.value
+      });
+
+      if (error) {
+          alert("Error al ingresar: " + error.message);
+      } else {
+          alert("¡Ingreso correcto!");
+          location.reload(); // Recargamos para refrescar la interfaz con la sesión activa
+      }
+  }
+
+  // --- ACCIÓN 2: GUARDAR (UPSERT) ---
+  async function ejecutarGuardadoNube(e) {
+      if(e) e.preventDefault();
+
+      // Detectar mes activo buscando el elemento que diga "Noviembre 2026", "Diciembre 2026", etc.
+      // Modificá el selector si tu título tiene una clase o ID específico
+      const h2s = document.querySelectorAll('h2, h1, div');
+      let mesActivo = "Noviembre 2026"; // Fallback por defecto
+      
+      h2s.forEach(el => {
+          if (el.innerText.match(/(Noviembre|Diciembre|Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre)\s+\d{4}/)) {
+              mesActivo = el.innerText.trim();
+          }
+      });
+
+      // Extraemos la estructura completa de tu LocalStorage actual
+      // Reemplazá 'gastos_personales' por la clave exacta con la que se guarda en tu app
+      const copiaLocalStorage = {};
+      for (let i = 0; i < localStorage.length; i++) {
+          const clave = localStorage.key(i);
+          copiaLocalStorage[clave] = localStorage.getItem(clave);
+      }
+
+      if (Object.keys(copiaLocalStorage).length === 0) {
+          alert("No se encontraron datos en el almacenamiento local para sincronizar.");
+          return;
+      }
+
+      // Guardamos o actualizamos en la tabla 'registro_gastos' configurada en el Paso 1
+      const { error } = await supabase
+          .from('registro_gastos')
+          .upsert({ 
+              mes_año: mesActivo, 
+              datos: copiaLocalStorage 
+          }, { onConflict: 'mes_año' });
+
+      if (error) {
+          alert("Error de sincronización en la nube: " + error.message);
+      } else {
+          alert("¡Dashboard sincronizado con éxito para " + mesActivo + "!");
+      }
+  }
+
+  // --- ACCIÓN 3: DESCARGAR DATOS AL ENTRAR O CAMBIAR DE MES ---
+  async function descargarDatosDesdeNube() {
+      // Buscamos cuál es el mes renderizado actualmente para pedir esos datos exactos
+      let mesALeer = "Noviembre 2026";
+      document.querySelectorAll('h2, h1').forEach(el => {
+          if (el.innerText.match(/(Noviembre|Diciembre|Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre)\s+\d{4}/)) {
+              mesALeer = el.innerText.trim();
+          }
+      });
+
+      const { data, error } = await supabase
+          .from('registro_gastos')
+          .select('datos')
+          .eq('mes_año', mesALeer)
+          .single();
+
+      if (data && data.datos) {
+          console.log("Datos encontrados en la nube para este mes. Sincronizando teléfono...");
+          // Escribimos los datos de la nube en tu localStorage
+          Object.keys(data.datos).forEach(clave => {
+              localStorage.setItem(clave, data.datos[clave]);
+          });
+          
+          // Forzamos un renderizado para que tu interfaz se entere del cambio.
+          // Si tu script original tiene una función como 'cargarDatos()' o 'render()', ejecútala acá.
+          // Si no la conocemos, un reload controlado o disparar el evento de cambio bastará:
+          // location.reload(); 
+      }
+  }
+
+  // --- ACCIÓN 4: LOGOUT ---
+  async function ejecutarLogout() {
+      await supabase.auth.signOut();
+      localStorage.clear(); // Limpiamos caché local para evitar confusiones de sesión
+      alert("Sesión finalizada.");
+      location.reload();
+  }
+</script>
 
 </body></html>
