@@ -2077,74 +2077,62 @@
 </script>
 <!-- MOTOR DE CONEXIÓN CON SUPABASE (SÓLO PARA EL MES ACTIVO) -->
 <script>
-  // 1. CONFIGURACIÓN DE CREDENCIALES
-  const supabaseUrl = 'https://vvosfqlbjbqhirtzwwtm.supabase.co'; // Cambiá por tu URL de Supabase
-  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2b3NmcWxiamJxaGlydHp3d3RtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQxNjgxMTQsImV4cCI6MjEwOTc0NDExNH0.NiDDyEBOqOZPW13CcqUjumClSn730V-c2wIPOgIHvs4';           // Cambiá por tu clave Anon pública
-  const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+  // 1. CONFIGURACIÓN DE CREDENCIALES REALES
+  const supabaseUrl = 'https://vvosfqlbjbqhirtzwwtm.supabase.co';
+  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2b3NmcWxiamJxaGlydHp3d3RtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQxNjgxMTQsImV4cCI6MjEwOTc0NDExNH0.NiDDyEBOqOZPW13CcqUjumClSn730V-c2wIPOgIHvs4';
+  const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
   // 2. CONTROL DE ACCESO AL CARGAR LA INTERFAZ
   window.addEventListener('DOMContentLoaded', async () => {
-      // Verificamos si existe una sesión activa
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await supabaseClient.auth.getSession();
       
       if (session) {
           console.log("Sesión iniciada correctamente como:", session.user.email);
-          // Desbloqueamos el Dashboard ocultando el panel de login
           document.body.classList.remove('app-locked');
           document.getElementById('signed-user').innerText = session.user.email;
           document.getElementById('sync-status').innerHTML = '<span class="sync-dot bg-emerald-500"></span> Conectado';
 
-          // Traemos el último mes guardado en la nube para sincronizar pantallas
           await descargarMesDesdeNube();
-          
-          // Activamos la escucha en vivo (si uno cambia de mes, al otro se le cambia en el acto)
           activarSincronizacionEnTiempoReal();
       } else {
-          // Si no está logueado, forzamos mostrar la pantalla de ingreso
           document.body.classList.add('app-locked');
           document.getElementById('sync-status').innerHTML = '<span class="sync-dot bg-rose-500"></span> Desconectado';
       }
 
-      // Vinculamos el formulario de ingreso nativo que creaste
       document.getElementById('auth-form').addEventListener('submit', ejecutarLogin);
       document.getElementById('sign-out').addEventListener('click', ejecutarLogout);
-      
-      // Vinculamos tu selector de meses para que guarde automáticamente al cambiar
       document.getElementById('monthSelect').addEventListener('change', ejecutarGuardadoMes);
   });
 
-  // 3. LOGIC DE AUTENTICACIÓN (LOGIN)
+  // 3. LOGIN
   async function ejecutarLogin(e) {
       e.preventDefault();
-      const email = document.getElementById('auth-email').value;
+      const email = document.getElementById('auth-email').value.trim();
       const password = document.getElementById('auth-password').value;
       const msgLabel = document.getElementById('auth-message');
 
       msgLabel.innerText = "Ingresando...";
 
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
       if (error) {
           msgLabel.innerText = "Error: " + error.message;
           msgLabel.classList.add('text-rose-600');
       } else {
           msgLabel.innerText = "¡Ingreso exitoso!";
-          location.reload(); // Recarga y desbloquea el panel
+          location.reload();
       }
   }
 
   // 4. GUARDAR ÚNICAMENTE LA VARIABLE DEL MES SELECCIONADO
   async function ejecutarGuardadoMes() {
       const mesSeleccionado = document.getElementById('monthSelect').value;
-      
-      // Primero lo guardamos en el LocalStorage interno del teléfono
       localStorage.setItem('3df-lastDashboardMonth', mesSeleccionado);
 
-      // Enviamos a la fila única de Supabase para que ambos usuarios compartan el estado
-      const { error } = await supabase
+      const { error } = await supabaseClient
           .from('registro_gastos')
           .upsert({ 
-              mes_año: 'Compartido-MesActivo', // Clave única fija para ustedes dos
+              mes_año: 'Compartido-MesActivo',
               datos: { "3df-lastDashboardMonth": mesSeleccionado } 
           }, { onConflict: 'mes_año' });
 
@@ -2157,7 +2145,7 @@
 
   // 5. DESCARGAR EL MES AL INICIAR LA PÁGINA
   async function descargarMesDesdeNube() {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
           .from('registro_gastos')
           .select('datos')
           .eq('mes_año', 'Compartido-MesActivo')
@@ -2168,19 +2156,16 @@
           const selectorMes = document.getElementById('monthSelect');
 
           if (selectorMes.value !== mesNube) {
-              // Sincronizamos LocalStorage y el elemento de la pantalla
               localStorage.setItem('3df-lastDashboardMonth', mesNube);
               selectorMes.value = mesNube;
-              
-              // Disparamos el evento nativo por si tu dashboard necesita cargar otra información interna
               selectorMes.dispatchEvent(new Event('change'));
           }
       }
   }
 
-  // 6. ADICIONAL: ESCUCHAR CAMBIOS EN VIVO (REALTIME)
+  // 6. ESCUCHAR CAMBIOS EN VIVO (REALTIME)
   function activarSincronizacionEnTiempoReal() {
-      supabase
+      supabaseClient
           .channel('cambios-globales')
           .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'registro_gastos', filter: "mes_año=eq.Compartido-MesActivo" }, (payload) => {
               if (payload.new && payload.new.datos && payload.new.datos["3df-lastDashboardMonth"]) {
@@ -2190,7 +2175,6 @@
                   if (selectorMes.value !== nuevoMes) {
                       localStorage.setItem('3df-lastDashboardMonth', nuevoMes);
                       selectorMes.value = nuevoMes;
-                      // Refrescamos la pestaña para emparejar pantallas al instante
                       location.reload();
                   }
               }
@@ -2200,10 +2184,11 @@
 
   // 7. CERRAR SESIÓN
   async function ejecutarLogout() {
-      await supabase.auth.signOut();
+      await supabaseClient.auth.signOut();
       localStorage.removeItem('3df-lastDashboardMonth');
       location.reload();
   }
 </script>
 
-</body></html>
+</body>
+</html>
