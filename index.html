@@ -1446,8 +1446,8 @@
         let activeMonth = 'Noviembre 2026';
 
         // Supabase: proyecto compartido y autenticación por correo/contraseña.
-        const SUPABASE_URL = 'https://zrlxmikeawltjfvbxszr.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_0y66BHj98E17LiYTqBqgFg_jXWWM2uf';
+        const SUPABASE_URL = 'https://supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2b3NmcWxiamJxaGlydHp3d3RtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQxNjgxMTQsImV4cCI6MjEwOTc0NDExNH0.NiDDyEBOqOZPW13CcqUjumClSn730V-c2wIPOgIHvs4';
         const SHARED_ROW_ID = 'familia-finanzas';
         const ALLOWED_EMAILS = ['monticof@gmail.com', 'daiavallejos91@gmail.com'];
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1761,113 +1761,4 @@
             link.click();
         }
     </script>
-<!-- MOTOR DE CONEXIÓN CON SUPABASE (SÓLO PARA EL MES ACTIVO) -->
-<script>
-  const supabaseUrl = 'https://supabase.co';
-  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2b3NmcWxiamJxaGlydHp3d3RtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQxNjgxMTQsImV4cCI6MjEwOTc0NDExNH0.NiDDyEBOqOZPW13CcqUjumClSn730V-c2wIPOgIHvs4';
-  const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
-
-  window.addEventListener('DOMContentLoaded', async () => {
-      const { data: { session } } = await supabaseClient.auth.getSession();
-      
-      if (session) {
-          document.body.classList.remove('app-locked');
-          document.getElementById('signed-user').innerText = session.user.email;
-          document.getElementById('sync-status').innerHTML = '<span class="sync-dot bg-emerald-500"></span> Conectado';
-
-          await descargarMesDesdeNube();
-          activarSincronizacionEnTiempoReal();
-      } else {
-          document.body.classList.add('app-locked');
-          document.getElementById('sync-status').innerHTML = '<span class="sync-dot bg-rose-500"></span> Desconectado';
-      }
-
-      document.getElementById('auth-form').addEventListener('submit', ejecutarLogin);
-      document.getElementById('sign-out').addEventListener('click', ejecutarLogout);
-      document.getElementById('monthSelect').addEventListener('change', ejecutarGuardadoMes);
-  });
-
-  async function ejecutarLogin(e) {
-      e.preventDefault();
-      const email = document.getElementById('auth-email').value.trim();
-      const password = document.getElementById('auth-password').value;
-      const msgLabel = document.getElementById('auth-message');
-
-      msgLabel.innerText = "Ingresando...";
-
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-
-      if (error) {
-          msgLabel.innerText = "Error: " + error.message;
-          msgLabel.classList.add('text-rose-600');
-      } else {
-          msgLabel.innerText = "¡Ingreso exitoso!";
-          location.reload();
-      }
-  }
-
-  async function ejecutarGuardadoMes() {
-      const mesSeleccionado = document.getElementById('monthSelect').value;
-      localStorage.setItem('3df-lastDashboardMonth', mesSeleccionado);
-
-      const { error } = await supabaseClient
-          .from('registro_gastos')
-          .upsert({ 
-              mes_año: 'Compartido-MesActivo',
-              datos: { "3df-lastDashboardMonth": mesSeleccionado } 
-          }, { onConflict: 'mes_año' });
-
-      if (error) {
-          console.error("No se pudo reflejar el mes en la nube:", error.message);
-      } else {
-          console.log("Mes sincronizado en la nube:", mesSeleccionado);
-      }
-  }
-
-  async function descargarMesDesdeNube() {
-      const { data, error } = await supabaseClient
-          .from('registro_gastos')
-          .select('datos')
-          .eq('mes_año', 'Compartido-MesActivo')
-          .maybeSingle();
-
-      if (data && data.datos && data.datos["3df-lastDashboardMonth"]) {
-          const mesNube = data.datos["3df-lastDashboardMonth"];
-          const selectorMes = document.getElementById('monthSelect');
-
-          if (selectorMes.value !== mesNube) {
-              localStorage.setItem('3df-lastDashboardMonth', mesNube);
-              selectorMes.value = mesNube;
-              selectorMes.dispatchEvent(new Event('change'));
-          }
-      }
-  }
-
-  function activarSincronizacionEnTiempoReal() {
-      supabaseClient
-          .channel('cambios-globales')
-          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'registro_gastos', filter: "mes_año=eq.Compartido-MesActivo" }, (payload) => {
-              if (payload.new && payload.new.datos && payload.new.datos["3df-lastDashboardMonth"]) {
-                  const nuevoMes = payload.new.datos["3df-lastDashboardMonth"];
-                  const selectorMes = document.getElementById('monthSelect');
-                  
-                  if (selectorMes.value !== nuevoMes) {
-                      localStorage.setItem('3df-lastDashboardMonth', nuevoMes);
-                      selectorMes.value = nuevoMes;
-                      location.reload();
-                  }
-              }
-          })
-          .subscribe();
-  }
-
-  async function ejecutarLogout() {
-      await supabaseClient.auth.signOut();
-      localStorage.removeItem('3df-lastDashboardMonth');
-      location.reload();
-  }
-</script>
-
-</body>
-</html>
-
+</body></html>
